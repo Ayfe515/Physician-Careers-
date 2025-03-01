@@ -1,0 +1,667 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Physician Careers</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css" />
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: Arial, sans-serif;
+        }
+        
+        body {
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            overflow: hidden;
+        }
+        
+        .header {
+            background-color: #2c3e50;
+            color: white;
+            padding: 15px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            z-index: 1000;
+        }
+        
+        .title {
+            font-size: 24px;
+            font-weight: bold;
+        }
+        
+        .filters {
+            display: flex;
+            gap: 15px;
+            align-items: center;
+        }
+        
+        .filter-option {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            color: white;
+        }
+        
+        .view-list-btn {
+            background-color: #3498db;
+            color: white;
+            border: none;
+            padding: 8px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-left: 15px;
+        }
+        
+        .state-filter, .compensation-filter {
+            padding: 5px;
+            border-radius: 4px;
+            border: 1px solid #ddd;
+        }
+        
+        #map {
+            flex-grow: 1;
+            width: 100%;
+        }
+        
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 2000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+        }
+        
+        .modal-content {
+            background-color: white;
+            margin: 10% auto;
+            padding: 20px;
+            width: 50%;
+            border-radius: 8px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+        }
+        
+        .modal-title {
+            font-size: 20px;
+            margin-bottom: 15px;
+            color: #2c3e50;
+        }
+        
+        .form-group {
+            margin-bottom: 15px;
+        }
+        
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+            color: #333;
+        }
+        
+        .form-group input[type="text"],
+        .form-group input[type="number"] {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        
+        .checkbox-group {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+        
+        .checkbox-option {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        
+        .button-group {
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
+        }
+        
+        .btn {
+            padding: 8px 15px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        
+        .btn-primary {
+            background-color: #3498db;
+            color: white;
+        }
+        
+        .btn-danger {
+            background-color: #e74c3c;
+            color: white;
+        }
+        
+        .btn-secondary {
+            background-color: #95a5a6;
+            color: white;
+        }
+        
+        /* List page styles */
+        .list-page {
+            display: none;
+            padding: 20px;
+            height: 100vh;
+            overflow-y: auto;
+        }
+        
+        .back-btn {
+            background-color: #3498db;
+            color: white;
+            border: none;
+            padding: 8px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-bottom: 20px;
+        }
+        
+        .job-list {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        
+        .job-list th, .job-list td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #ddd;
+        }
+        
+        .job-list th {
+            background-color: #2c3e50;
+            color: white;
+        }
+        
+        .job-list tr:nth-child(even) {
+            background-color: #f2f2f2;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div class="title">Physician Careers</div>
+        <div class="filters">
+            <div class="filter-option">
+                <label for="filter-compensation">Compensation:</label>
+                <select id="filter-compensation" class="compensation-filter">
+                    <option value="all">All Ranges</option>
+                    <option value="0-200000">$0 - $200k</option>
+                    <option value="200000-400000">$200k - $400k</option>
+                    <option value="400000-600000">$400k - $600k</option>
+                    <option value="600000-800000">$600k - $800k</option>
+                    <option value="800000-1000000">$800k - $1M</option>
+                    <option value="1000000+">$1M+</option>
+                </select>
+            </div>
+            <div class="filter-option">
+                <input type="checkbox" id="filter-j1">
+                <label for="filter-j1">J-1 Visa</label>
+            </div>
+            <div class="filter-option">
+                <input type="checkbox" id="filter-partnership">
+                <label for="filter-partnership">Partnership Track</label>
+            </div>
+            <div class="filter-option">
+                <input type="checkbox" id="filter-vascular">
+                <label for="filter-vascular">Peripheral Vascular</label>
+            </div>
+            <div class="filter-option">
+                <input type="checkbox" id="filter-structural">
+                <label for="filter-structural">Structural</label>
+            </div>
+            <div class="filter-option">
+                <select id="filter-state" class="state-filter">
+                    <option value="all">All States</option>
+                </select>
+            </div>
+            <button class="view-list-btn" onclick="showListPage()">View List</button>
+        </div>
+    </div>
+    
+    <div id="map"></div>
+    
+    <div id="job-modal" class="modal">
+        <div class="modal-content">
+            <h2 class="modal-title">Add New Job Opportunity</h2>
+            <form id="job-form">
+                <input type="hidden" id="job-lat">
+                <input type="hidden" id="job-lng">
+                <input type="hidden" id="job-id">
+                
+                <div class="form-group">
+                    <label for="job-title">Job Title:</label>
+                    <input type="text" id="job-title" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="job-compensation">Compensation ($):</label>
+                    <input type="number" id="job-compensation" min="0" step="10000" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="job-city">City:</label>
+                    <input type="text" id="job-city" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="job-state">State:</label>
+                    <select id="job-state" required>
+                        <!-- States will be added with JavaScript -->
+                    </select>
+                </div>
+                
+                <div class="checkbox-group">
+                    <div class="checkbox-option">
+                        <input type="checkbox" id="job-j1">
+                        <label for="job-j1">J-1 Visa Sponsorship</label>
+                    </div>
+                    <div class="checkbox-option">
+                        <input type="checkbox" id="job-partnership">
+                        <label for="job-partnership">Partnership Track</label>
+                    </div>
+                    <div class="checkbox-option">
+                        <input type="checkbox" id="job-vascular">
+                        <label for="job-vascular">Peripheral Vascular</label>
+                    </div>
+                    <div class="checkbox-option">
+                        <input type="checkbox" id="job-structural">
+                        <label for="job-structural">Structural</label>
+                    </div>
+                </div>
+                
+                <div class="button-group">
+                    <button type="button" class="btn btn-secondary" onclick="closeJobModal()">Cancel</button>
+                    <button type="button" class="btn btn-danger" id="delete-btn" style="display: none;" onclick="deleteJob()">Delete</button>
+                    <button type="submit" class="btn btn-primary">Save</button>
+                </div>
+            </form>
+        </div>
+    </div>
+    
+    <div id="list-page" class="list-page">
+        <button class="back-btn" onclick="hideListPage()">Back to Map</button>
+        <h1>All Job Opportunities</h1>
+        <table class="job-list">
+            <thead>
+                <tr>
+                    <th>Job Title</th>
+                    <th>Location</th>
+                    <th>Compensation</th>
+                    <th>J-1 Visa</th>
+                    <th>Partnership</th>
+                    <th>Peripheral Vascular</th>
+                    <th>Structural</th>
+                </tr>
+            </thead>
+            <tbody id="job-list-body">
+                <!-- Jobs will be listed here -->
+            </tbody>
+        </table>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js"></script>
+    <script>
+        // States data
+        const states = [
+            "Alabama", "Alaska", "Arizona", "Arkansas", "California", "Colorado", "Connecticut", "Delaware", "Florida", "Georgia", 
+            "Hawaii", "Idaho", "Illinois", "Indiana", "Iowa", "Kansas", "Kentucky", "Louisiana", "Maine", "Maryland", 
+            "Massachusetts", "Michigan", "Minnesota", "Mississippi", "Missouri", "Montana", "Nebraska", "Nevada", "New Hampshire", "New Jersey", 
+            "New Mexico", "New York", "North Carolina", "North Dakota", "Ohio", "Oklahoma", "Oregon", "Pennsylvania", "Rhode Island", "South Carolina", 
+            "South Dakota", "Tennessee", "Texas", "Utah", "Vermont", "Virginia", "Washington", "West Virginia", "Wisconsin", "Wyoming"
+        ];
+        
+        // State boundaries for zooming - approximate coordinates
+        const stateBounds = {
+            "Alabama": [[30.1, -88.5], [35.0, -84.9]],
+            "Alaska": [[51.0, -179.0], [71.5, -130.0]],
+            "Arizona": [[31.3, -114.8], [37.0, -109.0]],
+            "Arkansas": [[33.0, -94.6], [36.5, -89.6]],
+            "California": [[32.5, -124.4], [42.0, -114.1]],
+            "Colorado": [[37.0, -109.0], [41.0, -102.0]],
+            "Connecticut": [[40.9, -73.7], [42.0, -71.8]],
+            "Delaware": [[38.4, -75.8], [39.8, -75.0]],
+            "Florida": [[24.5, -87.6], [31.0, -80.0]],
+            "Georgia": [[30.3, -85.6], [35.0, -80.8]],
+            "Hawaii": [[18.9, -160.2], [22.2, -154.8]],
+            "Idaho": [[42.0, -117.2], [49.0, -111.0]],
+            "Illinois": [[37.0, -91.5], [42.5, -87.5]],
+            "Indiana": [[37.8, -88.1], [41.8, -84.8]],
+            "Iowa": [[40.4, -96.6], [43.5, -90.1]],
+            "Kansas": [[37.0, -102.0], [40.0, -94.6]],
+            "Kentucky": [[36.5, -89.6], [39.1, -82.5]],
+            "Louisiana": [[29.0, -94.0], [33.0, -89.0]],
+            "Maine": [[43.1, -71.1], [47.5, -67.0]],
+            "Maryland": [[38.0, -79.5], [39.7, -75.0]],
+            "Massachusetts": [[41.2, -73.5], [42.9, -70.0]],
+            "Michigan": [[41.7, -90.4], [48.3, -82.4]],
+            "Minnesota": [[43.5, -97.2], [49.4, -89.5]],
+            "Mississippi": [[30.1, -91.7], [35.0, -88.1]],
+            "Missouri": [[36.0, -95.8], [40.6, -89.1]],
+            "Montana": [[44.4, -116.0], [49.0, -104.0]],
+            "Nebraska": [[40.0, -104.0], [43.0, -95.3]],
+            "Nevada": [[35.0, -120.0], [42.0, -114.0]],
+            "New Hampshire": [[42.7, -72.6], [45.3, -71.0]],
+            "New Jersey": [[38.9, -75.6], [41.4, -73.9]],
+            "New Mexico": [[31.3, -109.0], [37.0, -103.0]],
+            "New York": [[40.5, -79.8], [45.0, -71.8]],
+            "North Carolina": [[33.8, -84.3], [36.6, -75.5]],
+            "North Dakota": [[45.9, -104.0], [49.0, -96.6]],
+            "Ohio": [[38.4, -84.8], [42.0, -80.5]],
+            "Oklahoma": [[33.6, -103.0], [37.0, -94.4]],
+            "Oregon": [[42.0, -124.6], [46.3, -116.5]],
+            "Pennsylvania": [[39.7, -80.5], [42.3, -74.7]],
+            "Rhode Island": [[41.1, -71.9], [42.0, -71.1]],
+            "South Carolina": [[32.0, -83.4], [35.2, -78.5]],
+            "South Dakota": [[42.5, -104.0], [46.0, -96.4]],
+            "Tennessee": [[35.0, -90.3], [36.7, -81.7]],
+            "Texas": [[25.8, -106.6], [36.5, -93.5]],
+            "Utah": [[37.0, -114.0], [42.0, -109.0]],
+            "Vermont": [[42.7, -73.4], [45.0, -71.5]],
+            "Virginia": [[36.5, -83.7], [39.5, -75.2]],
+            "Washington": [[45.5, -124.8], [49.0, -117.0]],
+            "West Virginia": [[37.2, -82.6], [40.6, -77.7]],
+            "Wisconsin": [[42.5, -92.9], [47.1, -86.8]],
+            "Wyoming": [[41.0, -111.0], [45.0, -104.0]]
+        };
+        
+        // Initialize map
+        const map = L.map('map').setView([39.8283, -98.5795], 4); // Center of USA
+        
+        // Add the blue-grey styled tiles
+        L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
+            attribution: '© OpenStreetMap contributors, © CARTO',
+            maxZoom: 19
+        }).addTo(map);
+        
+        // Initialize markers array and layer group
+        let markers = [];
+        const markersLayer = L.layerGroup().addTo(map);
+        
+        // Populate state dropdowns
+        populateStateDropdowns();
+        
+        // Load saved markers
+        loadMarkers();
+        
+        // Set up map click event
+        map.on('click', function(e) {
+            showAddModal(e.latlng);
+        });
+        
+        // Set up filter change events
+        document.getElementById('filter-compensation').addEventListener('change', filterMarkers);
+        document.getElementById('filter-j1').addEventListener('change', filterMarkers);
+        document.getElementById('filter-partnership').addEventListener('change', filterMarkers);
+        document.getElementById('filter-vascular').addEventListener('change', filterMarkers);
+        document.getElementById('filter-structural').addEventListener('change', filterMarkers);
+        document.getElementById('filter-state').addEventListener('change', function() {
+            const selectedState = this.value;
+            if (selectedState === 'all') {
+                map.setView([39.8283, -98.5795], 4); // Zoom to USA
+            } else if (stateBounds[selectedState]) {
+                map.fitBounds(stateBounds[selectedState]);
+            }
+            filterMarkers();
+        });
+        
+        // Set up job form submission
+        document.getElementById('job-form').addEventListener('submit', function(e) {
+            e.preventDefault();
+            saveJob();
+        });
+        
+        function populateStateDropdowns() {
+            const filterStateSelect = document.getElementById('filter-state');
+            const jobStateSelect = document.getElementById('job-state');
+            
+            // Add states to filter dropdown (already has "All States" option)
+            states.forEach(state => {
+                const option = document.createElement('option');
+                option.value = state;
+                option.textContent = state;
+                filterStateSelect.appendChild(option);
+            });
+            
+            // Add states to job form dropdown
+            states.forEach(state => {
+                const option = document.createElement('option');
+                option.value = state;
+                option.textContent = state;
+                jobStateSelect.appendChild(option);
+            });
+        }
+        
+        function loadMarkers() {
+            const savedMarkers = localStorage.getItem('physicianJobMarkers');
+            if (savedMarkers) {
+                markers = JSON.parse(savedMarkers);
+                renderMarkers();
+            }
+        }
+        
+        function renderMarkers() {
+            // Clear existing markers
+            markersLayer.clearLayers();
+            
+            // Add markers based on current filters
+            markers.forEach(marker => {
+                if (shouldShowMarker(marker)) {
+                    const jobMarker = L.marker([marker.lat, marker.lng]).addTo(markersLayer);
+                    jobMarker.bindPopup(`
+                        <strong>${marker.title}</strong><br>
+                        ${marker.city}, ${marker.state}<br>
+                        $${marker.compensation.toLocaleString()}<br>
+                        <button onclick="editMarker('${marker.id}')">Edit</button>
+                    `);
+                }
+            });
+            
+            // Update list view
+            updateJobList();
+        }
+        
+        function showAddModal(latlng) {
+            // Reset form
+            document.getElementById('job-form').reset();
+            document.getElementById('job-lat').value = latlng.lat;
+            document.getElementById('job-lng').value = latlng.lng;
+            document.getElementById('job-id').value = '';
+            document.getElementById('delete-btn').style.display = 'none';
+            
+            // Show modal
+            document.getElementById('job-modal').style.display = 'block';
+        }
+        
+        function closeJobModal() {
+            document.getElementById('job-modal').style.display = 'none';
+        }
+        
+        function saveJob() {
+            const id = document.getElementById('job-id').value || generateId();
+            const lat = parseFloat(document.getElementById('job-lat').value);
+            const lng = parseFloat(document.getElementById('job-lng').value);
+            const title = document.getElementById('job-title').value;
+            const compensation = parseInt(document.getElementById('job-compensation').value);
+            const city = document.getElementById('job-city').value;
+            const state = document.getElementById('job-state').value;
+            const j1Visa = document.getElementById('job-j1').checked;
+            const partnership = document.getElementById('job-partnership').checked;
+            const vascular = document.getElementById('job-vascular').checked;
+            const structural = document.getElementById('job-structural').checked;
+            
+            const job = {
+                id,
+                lat,
+                lng,
+                title,
+                compensation,
+                city,
+                state,
+                j1Visa,
+                partnership,
+                vascular,
+                structural
+            };
+            
+            // Check if this is an edit or a new job
+            const existingIndex = markers.findIndex(m => m.id === id);
+            if (existingIndex !== -1) {
+                markers[existingIndex] = job;
+            } else {
+                markers.push(job);
+            }
+            
+            // Save to localStorage
+            localStorage.setItem('physicianJobMarkers', JSON.stringify(markers));
+            
+            // Update map and close modal
+            renderMarkers();
+            closeJobModal();
+        }
+        
+        function editMarker(id) {
+            const job = markers.find(m => m.id === id);
+            if (job) {
+                document.getElementById('job-id').value = job.id;
+                document.getElementById('job-lat').value = job.lat;
+                document.getElementById('job-lng').value = job.lng;
+                document.getElementById('job-title').value = job.title;
+                document.getElementById('job-compensation').value = job.compensation;
+                document.getElementById('job-city').value = job.city;
+                document.getElementById('job-state').value = job.state;
+                document.getElementById('job-j1').checked = job.j1Visa;
+                document.getElementById('job-partnership').checked = job.partnership;
+                document.getElementById('job-vascular').checked = job.vascular;
+                document.getElementById('job-structural').checked = job.structural;
+                
+                // Show delete button for existing jobs
+                document.getElementById('delete-btn').style.display = 'block';
+                
+                // Show modal
+                document.getElementById('job-modal').style.display = 'block';
+            }
+        }
+        
+        function deleteJob() {
+            const id = document.getElementById('job-id').value;
+            markers = markers.filter(m => m.id !== id);
+            
+            // Save to localStorage
+            localStorage.setItem('physicianJobMarkers', JSON.stringify(markers));
+            
+            // Update map and close modal
+            renderMarkers();
+            closeJobModal();
+        }
+        
+        function filterMarkers() {
+            renderMarkers();
+        }
+        
+        function shouldShowMarker(marker) {
+            const compensationRange = document.getElementById('filter-compensation').value;
+            const filterJ1 = document.getElementById('filter-j1').checked;
+            const filterPartnership = document.getElementById('filter-partnership').checked;
+            const filterVascular = document.getElementById('filter-vascular').checked;
+            const filterStructural = document.getElementById('filter-structural').checked;
+            const filterState = document.getElementById('filter-state').value;
+            
+            // Check compensation range
+            if (compensationRange !== 'all') {
+                if (compensationRange === '1000000+') {
+                    // $1M+
+                    if (marker.compensation < 1000000) {
+                        return false;
+                    }
+                } else {
+                    // Range like "200000-400000"
+                    const [min, max] = compensationRange.split('-').map(Number);
+                    if (marker.compensation < min || marker.compensation > max) {
+                        return false;
+                    }
+                }
+            }
+            
+            // Check J-1 visa
+            if (filterJ1 && !marker.j1Visa) {
+                return false;
+            }
+            
+            // Check partnership
+            if (filterPartnership && !marker.partnership) {
+                return false;
+            }
+            
+            // Check vascular
+            if (filterVascular && !marker.vascular) {
+                return false;
+            }
+            
+            // Check structural
+            if (filterStructural && !marker.structural) {
+                return false;
+            }
+            
+            // Check state
+            if (filterState !== 'all' && marker.state !== filterState) {
+                return false;
+            }
+            
+            return true;
+        }
+        
+        function updateJobList() {
+            const listBody = document.getElementById('job-list-body');
+            listBody.innerHTML = '';
+            
+            markers.forEach(job => {
+                if (shouldShowMarker(job)) {
+                    const row = document.createElement('tr');
+                    row.innerHTML = `
+                        <td>${job.title}</td>
+                        <td>${job.city}, ${job.state}</td>
+                        <td>$${job.compensation.toLocaleString()}</td>
+                        <td>${job.j1Visa ? 'Yes' : 'No'}</td>
+                        <td>${job.partnership ? 'Yes' : 'No'}</td>
+                        <td>${job.vascular ? 'Yes' : 'No'}</td>
+                        <td>${job.structural ? 'Yes' : 'No'}</td>
+                    `;
+                    listBody.appendChild(row);
+                }
+            });
+        }
+        
+        function showListPage() {
+            document.getElementById('map').style.display = 'none';
+            document.getElementById('list-page').style.display = 'block';
+            updateJobList();
+        }
+        
+        function hideListPage() {
+            document.getElementById('list-page').style.display = 'none';
+            document.getElementById('map').style.display = 'block';
+        }
+        
+        function generateId() {
+            return 'job_' + Date.now() + '_' + Math.floor(Math.random() * 1000);
+        }
+    </script>
+</body>
+</html>
