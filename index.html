@@ -771,7 +771,33 @@
         
         function generateId() {
             return 'job_' + Date.now() + '_' + Math.floor(Math.random() * 1000);
-        }
+}
+        function updateAuthUI() {
+            const authLinks = document.querySelector('.auth-links');
+            const currentUser = JSON.parse(localStorage.getItem('currentUser'));
+
+            if (currentUser) {
+                authLinks.innerHTML = `
+                    Welcome, ${currentUser.email.split('@')[0]} | 
+                    <a href="#" onclick="logout()">Logout</a>
+                `;
+            } else {
+                authLinks.innerHTML = `
+                    <a href="login.html">Login</a> | 
+                    <a href="register.html">Register</a>
+                `;
+            }
+}
+
+        function logout() {
+            localStorage.removeItem('currentUser');
+            updateAuthUI(); // Update UI immediately
+            window.location.href = 'index.html'; // Refresh page
+}
+
+        // Initial check when page loads
+        updateAuthUI();
+
     </script>
 </body>
 </html>
