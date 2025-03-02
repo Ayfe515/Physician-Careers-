@@ -66,6 +66,21 @@
             font-size: 24px;
             font-weight: bold;
         }
+        .auth-links {
+            display: inline-block;
+            margin-left: 20px;
+            font-size: 14px;
+}
+
+        .auth-links a {
+            color: white;
+            text-decoration: none;
+            padding: 0 5px;
+}
+
+        .auth-links a:hover {
+            text-decoration: underline;
+}
         
         .filters {
             display: flex;
@@ -217,7 +232,12 @@
 </head>
 <body>
     <div class="header">
-        <div class="title">Physician Careers</div>
+        <div class="title">
+            Physician Careers
+            <div class="auth-links">
+                <a href="login.html">Login</a> | <a href="register.html">Register</a>
+            </div>
+        </div>
         <div class="search-bar">
             <input type="text" id="search-input" placeholder="Search address, city, state, or job...">
             <button onclick="performSearch()" class="search-btn">Search</button>
