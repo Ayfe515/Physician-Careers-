@@ -228,6 +228,43 @@
         .job-list tr:nth-child(even) {
             background-color: #f2f2f2;
         }
+        /* List view expandable rows */
+.job-title-cell {
+    cursor: pointer;
+    position: relative;
+    padding-right: 25px !important;
+}
+
+.expand-icon {
+    position: absolute;
+    right: 10px;
+    top: 50%;
+    transform: translateY(-50%);
+    font-weight: bold;
+    font-size: 18px;
+}
+
+.job-details {
+    padding: 15px !important;
+    background-color: #f9f9f9;
+}
+
+.detail-section {
+    margin-bottom: 15px;
+    padding-bottom: 15px;
+    border-bottom: 1px solid #eee;
+}
+
+.detail-section:last-child {
+    margin-bottom: 0;
+    padding-bottom: 0;
+    border-bottom: none;
+}
+
+.detail-section h3 {
+    margin-bottom: 8px;
+    color: #2c3e50;
+}
     </style>
 </head>
 <body>
@@ -301,15 +338,30 @@
                 </div>
                 
                 <div class="form-group">
-                    <label for="job-city">City:</label>
-                    <input type="text" id="job-city" required>
+                    <label>Location:</label>
+                    <div id="job-location-display"></div>
+                    <input type="hidden" id="job-city">
+                    <input type="hidden" id="job-state">
                 </div>
                 
                 <div class="form-group">
-                    <label for="job-state">State:</label>
-                    <select id="job-state" required>
-                        <!-- States will be added with JavaScript -->
-                    </select>
+                    <label for="job-description">Job Description:</label>
+                    <textarea id="job-description" rows="4" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;"></textarea>
+                </div>
+                
+                <div class="form-group">
+                    <label for="job-contact-name">Contact Name:</label>
+                    <input type="text" id="job-contact-name">
+                </div>
+                
+                <div class="form-group">
+                    <label for="job-contact-phone">Contact Phone:</label>
+                    <input type="tel" id="job-contact-phone">
+                </div>
+                
+                <div class="form-group">
+                    <label for="job-contact-email">Contact Email:</label>
+                    <input type="email" id="job-contact-email">
                 </div>
                 
                 <div class="checkbox-group">
@@ -549,115 +601,162 @@
             markersLayer.clearLayers();
             
             // Add markers based on current filters
-            markers.forEach(marker => {
-                if (shouldShowMarker(marker)) {
-                    const jobMarker = L.marker([marker.lat, marker.lng]).addTo(markersLayer);
-                    jobMarker.bindPopup(`
-                        <strong>${marker.title}</strong><br>
-                        ${marker.city}, ${marker.state}<br>
-                        $${marker.compensation.toLocaleString()}<br>
-                        <button onclick="editMarker('${marker.id}')">Edit</button>
-                    `);
-                }
-            });
+markers.forEach(marker => {
+    if (shouldShowMarker(marker)) {
+        const jobMarker = L.marker([marker.lat, marker.lng]).addTo(markersLayer);
+        
+        // Create popup content
+        let popupContent = `
+            <strong>${marker.title}</strong><br>
+            ${marker.city}, ${marker.state}<br>
+            $${marker.compensation.toLocaleString()}<br>
+        `;
+        
+        // Add description if exists
+        if (marker.description) {
+            popupContent += `<p>${marker.description}</p>`;
+        }
+        
+        // Add contact info if exists
+        if (marker.contactName || marker.contactPhone || marker.contactEmail) {
+            popupContent += `<p><strong>Contact:</strong><br>`;
+            if (marker.contactName) popupContent += `${marker.contactName}<br>`;
+            if (marker.contactPhone) popupContent += `Phone: ${marker.contactPhone}<br>`;
+            if (marker.contactEmail) popupContent += `Email: ${marker.contactEmail}<br>`;
+            popupContent += `</p>`;
+        }
+        
+        // Add edit button
+        popupContent += `<button onclick="editMarker('${marker.id}')">Edit</button>`;
+        
+        jobMarker.bindPopup(popupContent);
+    }
+});
             
             // Update list view
             updateJobList();
         }
         
         function showAddModal(latlng) {
-            // Reset form
-            document.getElementById('job-form').reset();
-            document.getElementById('job-lat').value = latlng.lat;
-            document.getElementById('job-lng').value = latlng.lng;
-            document.getElementById('job-id').value = '';
-            document.getElementById('delete-btn').style.display = 'none';
-            fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${latlng.lat}&lon=${latlng.lng}&email=ammar.515@hotmail.com`)
-            .then(response => response.json())
-            .then(data => {
-            document.getElementById('job-city').value = data.address.city || 
-                                                      data.address.town || 
-                                                      data.address.village || '';
-            document.getElementById('job-state').value = data.address.state || 
-                                                        data.address.state_code || '';
-        })
-        .catch(error => {
-            console.error('Error fetching location:', error);
-        });
-            
-            // Show modal
-            document.getElementById('job-modal').style.display = 'block';
-        }
+    // Reset form
+    document.getElementById('job-form').reset();
+    document.getElementById('job-lat').value = latlng.lat;
+    document.getElementById('job-lng').value = latlng.lng;
+    document.getElementById('job-id').value = '';
+    document.getElementById('delete-btn').style.display = 'none';
+    
+    // Clear the location display
+    document.getElementById('job-location-display').textContent = 'Loading location...';
+    
+    fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${latlng.lat}&lon=${latlng.lng}&email=ammar.515@hotmail.com`)
+    .then(response => response.json())
+    .then(data => {
+        const city = data.address.city || data.address.town || data.address.village || '';
+        const state = data.address.state || data.address.state_code || '';
+        
+        // Set hidden values
+        document.getElementById('job-city').value = city;
+        document.getElementById('job-state').value = state;
+        
+        // Display location
+        document.getElementById('job-location-display').textContent = `${city}, ${state}`;
+    })
+    .catch(error => {
+        console.error('Error fetching location:', error);
+        document.getElementById('job-location-display').textContent = 'Location could not be determined';
+    });
+    
+    // Show modal
+    document.getElementById('job-modal').style.display = 'block';
+}
         
         function closeJobModal() {
             document.getElementById('job-modal').style.display = 'none';
         }
         
         function saveJob() {
-            const id = document.getElementById('job-id').value || generateId();
-            const lat = parseFloat(document.getElementById('job-lat').value);
-            const lng = parseFloat(document.getElementById('job-lng').value);
-            const title = document.getElementById('job-title').value;
-            const compensation = parseInt(document.getElementById('job-compensation').value);
-            const city = document.getElementById('job-city').value;
-            const state = document.getElementById('job-state').value;
-            const j1Visa = document.getElementById('job-j1').checked;
-            const partnership = document.getElementById('job-partnership').checked;
-            const vascular = document.getElementById('job-vascular').checked;
-            const structural = document.getElementById('job-structural').checked;
-            
-            const job = {
-                id,
-                lat,
-                lng,
-                title,
-                compensation,
-                city,
-                state,
-                j1Visa,
-                partnership,
-                vascular,
-                structural
-            };
-            
-            // Check if this is an edit or a new job
-            const existingIndex = markers.findIndex(m => m.id === id);
-            if (existingIndex !== -1) {
-                markers[existingIndex] = job;
-            } else {
-                markers.push(job);
-            }
-            
-            // Save to localStorage
-            localStorage.setItem('physicianJobMarkers', JSON.stringify(markers));
-            
-            // Update map and close modal
-            renderMarkers();
-            closeJobModal();
-        }
+    const id = document.getElementById('job-id').value || generateId();
+    const lat = parseFloat(document.getElementById('job-lat').value);
+    const lng = parseFloat(document.getElementById('job-lng').value);
+    const title = document.getElementById('job-title').value;
+    const compensation = parseInt(document.getElementById('job-compensation').value);
+    const city = document.getElementById('job-city').value;
+    const state = document.getElementById('job-state').value;
+    const j1Visa = document.getElementById('job-j1').checked;
+    const partnership = document.getElementById('job-partnership').checked;
+    const vascular = document.getElementById('job-vascular').checked;
+    const structural = document.getElementById('job-structural').checked;
+    const description = document.getElementById('job-description').value;
+    const contactName = document.getElementById('job-contact-name').value;
+    const contactPhone = document.getElementById('job-contact-phone').value;
+    const contactEmail = document.getElementById('job-contact-email').value;
+    
+    const job = {
+        id,
+        lat,
+        lng,
+        title,
+        compensation,
+        city,
+        state,
+        j1Visa,
+        partnership,
+        vascular,
+        structural,
+        description,
+        contactName,
+        contactPhone,
+        contactEmail
+    };
+    
+    // Check if this is an edit or a new job
+    const existingIndex = markers.findIndex(m => m.id === id);
+    if (existingIndex !== -1) {
+        markers[existingIndex] = job;
+    } else {
+        markers.push(job);
+    }
+    
+    // Save to localStorage
+    localStorage.setItem('physicianJobMarkers', JSON.stringify(markers));
+    
+    // Update map and close modal
+    renderMarkers();
+    closeJobModal();
+}       
+function editMarker(id) {
+    const job = markers.find(m => m.id === id);
+    if (job) {
+        document.getElementById('job-id').value = job.id;
+        document.getElementById('job-lat').value = job.lat;
+        document.getElementById('job-lng').value = job.lng;
+        document.getElementById('job-title').value = job.title;
+        document.getElementById('job-compensation').value = job.compensation;
         
-        function editMarker(id) {
-            const job = markers.find(m => m.id === id);
-            if (job) {
-                document.getElementById('job-id').value = job.id;
-                document.getElementById('job-lat').value = job.lat;
-                document.getElementById('job-lng').value = job.lng;
-                document.getElementById('job-title').value = job.title;
-                document.getElementById('job-compensation').value = job.compensation;
-                document.getElementById('job-city').value = job.city;
-                document.getElementById('job-state').value = job.state;
-                document.getElementById('job-j1').checked = job.j1Visa;
-                document.getElementById('job-partnership').checked = job.partnership;
-                document.getElementById('job-vascular').checked = job.vascular;
-                document.getElementById('job-structural').checked = job.structural;
-                
-                // Show delete button for existing jobs
-                document.getElementById('delete-btn').style.display = 'block';
-                
-                // Show modal
-                document.getElementById('job-modal').style.display = 'block';
-            }
-        }
+        // Set location display
+        document.getElementById('job-city').value = job.city;
+        document.getElementById('job-state').value = job.state;
+        document.getElementById('job-location-display').textContent = `${job.city}, ${job.state}`;
+        
+        // Set checkboxes
+        document.getElementById('job-j1').checked = job.j1Visa;
+        document.getElementById('job-partnership').checked = job.partnership;
+        document.getElementById('job-vascular').checked = job.vascular;
+        document.getElementById('job-structural').checked = job.structural;
+        
+        // Set new fields
+        document.getElementById('job-description').value = job.description || '';
+        document.getElementById('job-contact-name').value = job.contactName || '';
+        document.getElementById('job-contact-phone').value = job.contactPhone || '';
+        document.getElementById('job-contact-email').value = job.contactEmail || '';
+        
+        // Show delete button for existing jobs
+        document.getElementById('delete-btn').style.display = 'block';
+        
+        // Show modal
+        document.getElementById('job-modal').style.display = 'block';
+    }
+}
         
         function deleteJob() {
             const id = document.getElementById('job-id').value;
@@ -728,25 +827,93 @@
         }
         
         function updateJobList() {
-            const listBody = document.getElementById('job-list-body');
-            listBody.innerHTML = '';
+    const listBody = document.getElementById('job-list-body');
+    listBody.innerHTML = '';
+    
+    markers.forEach(job => {
+        if (shouldShowMarker(job)) {
+            // Create main row
+            const row = document.createElement('tr');
+            row.className = 'job-row';
+            row.innerHTML = `
+                <td class="job-title-cell" data-job-id="${job.id}">
+                    <span class="job-title-text">${job.title}</span>
+                    <span class="expand-icon">+</span>
+                </td>
+                <td>${job.city}, ${job.state}</td>
+                <td>$${job.compensation.toLocaleString()}</td>
+                <td>${job.j1Visa ? 'Yes' : 'No'}</td>
+                <td>${job.partnership ? 'Yes' : 'No'}</td>
+                <td>${job.vascular ? 'Yes' : 'No'}</td>
+                <td>${job.structural ? 'Yes' : 'No'}</td>
+            `;
+            listBody.appendChild(row);
             
-            markers.forEach(job => {
-                if (shouldShowMarker(job)) {
-                    const row = document.createElement('tr');
-                    row.innerHTML = `
-                        <td>${job.title}</td>
-                        <td>${job.city}, ${job.state}</td>
-                        <td>$${job.compensation.toLocaleString()}</td>
-                        <td>${job.j1Visa ? 'Yes' : 'No'}</td>
-                        <td>${job.partnership ? 'Yes' : 'No'}</td>
-                        <td>${job.vascular ? 'Yes' : 'No'}</td>
-                        <td>${job.structural ? 'Yes' : 'No'}</td>
-                    `;
-                    listBody.appendChild(row);
+            // Create detail row (initially hidden)
+            const detailRow = document.createElement('tr');
+            detailRow.className = 'job-detail-row';
+            detailRow.style.display = 'none';
+            
+            // Build the content for the expanded detail row
+            let detailContent = `<td colspan="7" class="job-details">`;
+            
+            // Add description if exists
+            if (job.description) {
+                detailContent += `
+                    <div class="detail-section">
+                        <h3>Description</h3>
+                        <p>${job.description}</p>
+                    </div>
+                `;
+            }
+            
+            // Add contact info if exists
+            if (job.contactName || job.contactPhone || job.contactEmail) {
+                detailContent += `
+                    <div class="detail-section">
+                        <h3>Contact Information</h3>
+                `;
+                
+                if (job.contactName) {
+                    detailContent += `<p><strong>Name:</strong> ${job.contactName}</p>`;
+                }
+                if (job.contactPhone) {
+                    detailContent += `<p><strong>Phone:</strong> ${job.contactPhone}</p>`;
+                }
+                if (job.contactEmail) {
+                    detailContent += `<p><strong>Email:</strong> ${job.contactEmail}</p>`;
+                }
+                
+                detailContent += `</div>`;
+            }
+            
+            // Add edit button
+            detailContent += `
+                <div class="detail-section">
+                    <button onclick="editMarker('${job.id}')" class="btn btn-primary">Edit</button>
+                </div>
+            `;
+            
+            detailContent += `</td>`;
+            detailRow.innerHTML = detailContent;
+            
+            listBody.appendChild(detailRow);
+            
+            // Add click handler to job title cell
+            const titleCell = row.querySelector('.job-title-cell');
+            titleCell.addEventListener('click', function() {
+                // Toggle detail row
+                if (detailRow.style.display === 'none') {
+                    detailRow.style.display = 'table-row';
+                    this.querySelector('.expand-icon').textContent = '-';
+                } else {
+                    detailRow.style.display = 'none';
+                    this.querySelector('.expand-icon').textContent = '+';
                 }
             });
         }
+    });
+}
         
         function showListPage() {
             document.getElementById('map').style.display = 'none';
